@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Stock Analyzer — by Argha</title>
+<meta name="description" content="Analyze Indian and global stocks with interactive charts, moving averages, and an AI-powered stock assistant."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@500;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--bg2:#141720;--bg3:#1a1e28;--card:#1c2030;
+  --border:#252d42;--text:#e2e8f4;--muted:#5a6480;--accent:#4f8ef7;
+  --green:#22c55e;--red:#ef4444;--gdim:rgba(34,197,94,0.12);--rdim:rgba(239,68,68,0.12);
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.navbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:50}
+.logo{font-size:1.05rem;font-weight:700;letter-spacing:0.04em}
+.logo em{color:var(--accent);font-style:normal}
+.theme-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:5px;cursor:pointer;font-size:0.72rem;font-family:var(--mono);transition:all 0.2s}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+.main{max-width:900px;margin:0 auto;padding:2.5rem 1.25rem 6rem}
+h1{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;letter-spacing:-0.02em;text-align:center;margin-bottom:0.35rem}
+.sub{text-align:center;color:var(--muted);font-size:0.85rem;margin-bottom:1.75rem}
+.search-wrap{display:flex;max-width:540px;margin:0 auto 0.5rem;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s}
+.search-wrap:focus-within{border-color:var(--accent)}
+#sym{flex:1;background:none;border:none;outline:none;padding:14px 18px;color:var(--text);font-size:0.95rem;font-family:var(--mono);letter-spacing:0.04em}
+#sym::placeholder{color:var(--muted);letter-spacing:0}
+#goBtn{background:var(--accent);border:none;color:#fff;padding:0 22px;cursor:pointer;font-family:var(--font);font-weight:500;font-size:0.88rem;transition:opacity 0.2s;white-space:nowrap}
+#goBtn:hover{opacity:0.85}
+#goBtn:disabled{opacity:0.4;cursor:not-allowed}
+.hint{text-align:center;font-size:0.75rem;color:var(--muted);font-family:var(--mono);margin-bottom:1rem}
+.recents{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:1.75rem;min-height:26px}
+.rtag{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:3px 10px;border-radius:20px;font-size:0.72rem;font-family:var(--mono);cursor:pointer;transition:all 0.2s}
+.rtag:hover{border-color:var(--accent);color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.35rem}
+#spinner{display:none;text-align:center;padding:2.5rem 0;color:var(--muted);font-size:0.85rem}
+.ring{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 0.75rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+#errMsg{display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:0.85rem 1rem;border-radius:8px;font-size:0.85rem;margin-bottom:1rem;text-align:center}
+#result{display:none}
+.summary-row{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1rem}
+.co-name{font-size:1.35rem;font-weight:700;letter-spacing:-0.01em}
+.co-sym{font-size:0.75rem;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.price-side{text-align:right}
+.price{font-size:1.9rem;font-weight:700;font-family:var(--mono);letter-spacing:-0.02em}
+.chg{display:inline-block;margin-top:4px;padding:3px 10px;border-radius:5px;font-size:0.82rem;font-family:var(--mono)}
+.up{color:var(--green);background:var(--gdim)}
+.dn{color:var(--red);background:var(--rdim)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:0.9rem}
+.stat{background:var(--bg3);border-radius:7px;padding:0.75rem 0.9rem}
+.sl{font-size:0.68rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px}
+.sv{font-size:0.9rem;font-family:var(--mono);font-weight:500}
+.chart-card{margin-top:1rem}
+.pbtns{display:flex;gap:5px;margin-bottom:1rem}
+.pb{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 13px;border-radius:5px;cursor:pointer;font-family:var(--mono);font-size:0.72rem;transition:all 0.2s}
+.pb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pb:hover:not(.on){border-color:var(--accent);color:var(--accent)}
+.chart-wrap{position:relative;height:280px}
+.fav{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;transition:color 0.2s;padding:2px 6px}
+.fav.on{color:#f59e0b}
+.watermark{position:fixed;bottom:14px;right:18px;font-size:0.6rem;font-family:var(--mono);color:rgba(255,255,255,0.07);letter-spacing:0.28em;pointer-events:none;user-select:none;z-index:0}
+
+/* CHATBOT */
+.chat-bubble{position:fixed;bottom:24px;right:24px;z-index:1000}
+.chat-toggle{width:54px;height:54px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s;box-shadow:0 4px 18px rgba(79,142,247,0.4)}
+.chat-toggle:hover{opacity:0.88}
+.chat-toggle svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chat-notif{position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:#ef4444;border-radius:50%;border:2px solid var(--bg);display:none}
+.chat-box{position:absolute;bottom:66px;right:0;width:310px;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:none;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.chat-box.open{display:flex}
+.chat-header{background:var(--accent);padding:0.8rem 1rem;display:flex;align-items:center;justify-content:space-between}
+.chat-header-info{display:flex;align-items:center;gap:10px}
+.chat-avatar{width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff}
+.chat-header-title{font-size:0.88rem;font-weight:700;color:#fff}
+.chat-header-sub{font-size:0.68rem;color:rgba(255,255,255,0.75);margin-top:1px}
+.chat-close{background:none;border:none;color:rgba(255,255,255,0.8);cursor:pointer;font-size:1.1rem;line-height:1;padding:2px}
+.chat-close:hover{color:#fff}
+.chat-messages{flex:1;overflow-y:auto;padding:0.85rem;display:flex;flex-direction:column;gap:9px;max-height:270px;min-height:190px}
+.msg{max-width:88%;padding:8px 12px;border-radius:11px;font-size:0.8rem;line-height:1.5}
+.msg.bot{background:var(--bg3);color:var(--text);border-bottom-left-radius:3px;align-self:flex-start}
+.msg.user{background:var(--accent);color:#fff;border-bottom-right-radius:3px;align-self:flex-end}
+.suggest-chip{display:inline-block;background:rgba(79,142,247,0.15);border:1px solid rgba(79,142,247,0.3);color:var(--accent);padding:3px 9px;border-radius:14px;font-size:0.72rem;cursor:pointer;margin:3px 2px 0 0;transition:all 0.15s}
+.suggest-chip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.typing{display:flex;align-items:center;gap:4px;padding:9px 12px;background:var(--bg3);border-radius:11px;align-self:flex-start}
+.typing span{width:6px;height:6px;background:var(--muted);border-radius:50%;animation:bounce 1.2s infinite}
+.typing span:nth-child(2){animation-delay:0.2s}
+.typing span:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+.chat-input-row{display:flex;border-top:1px solid var(--border);background:var(--bg3)}
+.chat-input{flex:1;background:none;border:none;outline:none;padding:10px 13px;color:var(--text);font-size:0.8rem;font-family:var(--font)}
+.chat-input::placeholder{color:var(--muted)}
+.chat-send{background:none;border:none;padding:0 13px;cursor:pointer;color:var(--accent);display:flex;align-items:center;transition:opacity 0.2s}
+.chat-send:hover{opacity:0.75}
+.chat-send:disabled{opacity:0.3;cursor:not-allowed}
+
+/* LIGHT MODE */
+body.light{--bg:#f2f4f8;--bg2:#e8ebf2;--bg3:#e0e4ef;--card:#ffffff;--border:#d0d6e8;--text:#0d111c;--muted:#6b7594}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr 1fr}
+  .price-side{text-align:left}
+  .price{font-size:1.5rem}
+  .chat-box{width:270px}
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="logo">Stock<em>Analyzer</em></div>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">light mode</button>
+</div>
+
+<div class="main">
+  <h1>Live Stock Analysis</h1>
+  <p class="sub">Indian &amp; global stocks · Interactive charts · AI assistant</p>
+
+  <div class="search-wrap">
+    <input id="sym" placeholder="NVDA · ICICIBANK.NS · TSLA · AAPL" maxlength="20" onkeydown="if(event.key==='Enter')go()"/>
+    <button id="goBtn" onclick="go()">Analyze →</button>
+  </div>
+  <div class="hint">Indian stocks: add .NS &nbsp;(e.g. RELIANCE.NS) &nbsp;·&nbsp; Global: NVDA, MSFT, AAPL</div>
+  <div class="recents" id="recents"></div>
+
+  <div id="errMsg"></div>
+  <div id="spinner"><div class="ring"></div>Fetching stock data…</div>
+
+  <div id="result">
+    <div class="card">
+      <div class="summary-row">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="co-name" id="cname"></div>
+            <button class="fav" id="favBtn" onclick="toggleFav()" title="Add to favorites">☆</button>
+          </div>
+          <div class="co-sym" id="csym"></div>
+        </div>
+        <div class="price-side">
+          <div class="price" id="cprice"></div>
+          <div class="chg" id="cchg"></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="sl">Prev Close</div><div class="sv" id="sPrev"></div></div>
+        <div class="stat"><div class="sl">Currency</div><div class="sv" id="sCurr"></div></div>
+        <div class="stat"><div class="sl">Exchange</div><div class="sv" id="sExch"></div></div>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="pbtns">
+        <button class="pb" onclick="setPeriod('3mo',this)">3M</button>
+        <button class="pb on" onclick="setPeriod('6mo',this)">6M</button>
+        <button class="pb" onclick="setPeriod('1y',this)">1Y</button>
+        <button class="pb" onclick="setPeriod('2y',this)">2Y</button>
+      </div>
+      <div class="chart-wrap"><canvas id="ch"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="watermark">ARGHA</div>
+
+<!-- CHATBOT -->
+<div class="chat-bubble" id="chatBubble">
+  <div class="chat-box" id="chatBox">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">S</div>
+        <div>
+          <div class="chat-header-title">Stock Assistant</div>
+          <div class="chat-header-sub">Type a company name to find its symbol</div>
+        </div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMsgs"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatIn" placeholder="e.g. Infosys, Apple, Tesla…" onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send" id="chatSendBtn" onclick="sendChat()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="chat-notif" id="chatNotif"></div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chatToggleBtn">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </button>
+</div>
+
+<script>
+const stockDB={
+  'NVDA':{name:'NVIDIA Corporation',price:118,prev:115,curr:'USD',exch:'NASDAQ'},
+  'AAPL':{name:'Apple Inc.',price:198,prev:196,curr:'USD',exch:'NASDAQ'},
+  'MSFT':{name:'Microsoft Corporation',price:415,prev:412,curr:'USD',exch:'NASDAQ'},
+  'TSLA':{name:'Tesla Inc.',price:248,prev:241,curr:'USD',exch:'NASDAQ'},
+  'AMZN':{name:'Amazon.com Inc.',price:196,prev:194,curr:'USD',exch:'NASDAQ'},
+  'GOOGL':{name:'Alphabet Inc.',price:162,prev:160,curr:'USD',exch:'NASDAQ'},
+  'META':{name:'Meta Platforms Inc.',price:562,prev:558,curr:'USD',exch:'NASDAQ'},
+  'NFLX':{name:'Netflix Inc.',price:980,prev:965,curr:'USD',exch:'NASDAQ'},
+  'AMD':{name:'Advanced Micro Devices',price:98,prev:96,curr:'USD',exch:'NASDAQ'},
+  'INTC':{name:'Intel Corporation',price:22,prev:21.5,curr:'USD',exch:'NASDAQ'},
+  'UBER':{name:'Uber Technologies Inc.',price:78,prev:76.5,curr:'USD',exch:'NYSE'},
+  'SPOT':{name:'Spotify Technology S.A.',price:620,prev:612,curr:'USD',exch:'NYSE'},
+  'SHOP':{name:'Shopify Inc.',price:108,prev:106,curr:'USD',exch:'NYSE'},
+  'BABA':{name:'Alibaba Group Holding',price:105,prev:103,curr:'USD',exch:'NYSE'},
+  'RELIANCE.NS':{name:'Reliance Industries Ltd',price:1285,prev:1270,curr:'INR',exch:'NSE'},
+  'TCS.NS':{name:'Tata Consultancy Services',price:3420,prev:3380,curr:'INR',exch:'NSE'},
+  'INFY.NS':{name:'Infosys Limited',price:1520,prev:1505,curr:'INR',exch:'NSE'},
+  'ICICIBANK.NS':{name:'ICICI Bank Limited',price:1345,prev:1330,curr:'INR',exch:'NSE'},
+  'HDFCBANK.NS':{name:'HDFC Bank Limited',price:1875,prev:1858,curr:'INR',exch:'NSE'},
+  'WIPRO.NS':{name:'Wipro Limited',price:467,prev:461,curr:'INR',exch:'NSE'},
+  'SBIN.NS':{name:'State Bank of India',price:795,prev:788,curr:'INR',exch:'NSE'},
+  'TATAMOTORS.NS':{name:'Tata Motors Limited',price:685,prev:678,curr:'INR',exch:'NSE'},
+  'ADANIENT.NS':{name:'Adani Enterprises Ltd',price:2340,prev:2310,curr:'INR',exch:'NSE'},
+  'BAJFINANCE.NS':{name:'Bajaj Finance Limited',price:8960,prev:8880,curr:'INR',exch:'NSE'},
+  'HCLTECH.NS':{name:'HCL Technologies Ltd',price:1540,prev:1522,curr:'INR',exch:'NSE'},
+  'MARUTI.NS':{name:'Maruti Suzuki India Ltd',price:12400,prev:12250,curr:'INR',exch:'NSE'},
+  'SUNPHARMA.NS':{name:'Sun Pharmaceutical',price:1720,prev:1700,curr:'INR',exch:'NSE'},
+  'ONGC.NS':{name:'Oil & Natural Gas Corp',price:238,prev:235,curr:'INR',exch:'NSE'},
+  'ULTRACEMCO.NS':{name:'UltraTech Cement Ltd',price:11200,prev:11050,curr:'INR',exch:'NSE'},
+  'LT.NS':{name:'Larsen & Toubro Ltd',price:3540,prev:3510,curr:'INR',exch:'NSE'},
+  'AXISBANK.NS':{name:'Axis Bank Limited',price:1120,prev:1108,curr:'INR',exch:'NSE'},
+  'KOTAKBANK.NS':{name:'Kotak Mahindra Bank',price:1980,prev:1960,curr:'INR',exch:'NSE'},
+  'HINDUNILVR.NS':{name:'Hindustan Unilever Ltd',price:2350,prev:2330,curr:'INR',exch:'NSE'},
+  'ITC.NS':{name:'ITC Limited',price:418,prev:414,curr:'INR',exch:'NSE'},
+};
+
+const nameToSymbol={
+  'nvidia':'NVDA','apple':'AAPL','microsoft':'MSFT','tesla':'TSLA','amazon':'AMZN',
+  'google':'GOOGL','alphabet':'GOOGL','meta':'META','facebook':'META','netflix':'NFLX',
+  'amd':'AMD','intel':'INTC','uber':'UBER','spotify':'SPOT','shopify':'SHOP','alibaba':'BABA',
+  'advanced micro devices':'AMD',
+  'reliance':'RELIANCE.NS','tcs':'TCS.NS','tata consultancy':'TCS.NS','tata consultancy services':'TCS.NS',
+  'infosys':'INFY.NS','icici':'ICICIBANK.NS','icici bank':'ICICIBANK.NS',
+  'hdfc':'HDFCBANK.NS','hdfc bank':'HDFCBANK.NS',
+  'wipro':'WIPRO.NS','sbi':'SBIN.NS','state bank':'SBIN.NS','state bank of india':'SBIN.NS',
+  'tata motors':'TATAMOTORS.NS','adani':'ADANIENT.NS',
+  'bajaj finance':'BAJFINANCE.NS','bajaj':'BAJFINANCE.NS',
+  'hcl':'HCLTECH.NS','hcl tech':'HCLTECH.NS','hcl technologies':'HCLTECH.NS',
+  'maruti':'MARUTI.NS','maruti suzuki':'MARUTI.NS',
+  'sun pharma':'SUNPHARMA.NS','sun pharmaceutical':'SUNPHARMA.NS',
+  'ongc':'ONGC.NS','ultratech':'ULTRACEMCO.NS','ultratech cement':'ULTRACEMCO.NS',
+  'larsen':'LT.NS','l&t':'LT.NS','larsen and toubro':'LT.NS',
+  'axis bank':'AXISBANK.NS','axis':'AXISBANK.NS',
+  'kotak':'KOTAKBANK.NS','kotak bank':'KOTAKBANK.NS','kotak mahindra':'KOTAKBANK.NS',
+  'hindustan unilever':'HINDUNILVR.NS','hul':'HINDUNILVR.NS',
+  'itc':'ITC.NS',
+};
+
+let chart=null,curSym='',curPeriod='6mo',favs=[],recents=[],chatOpen=false;
+try{favs=JSON.parse(localStorage.getItem('sa_f')||'[]')}catch(e){}
+try{recents=JSON.parse(localStorage.getItem('sa_r')||'[]')}catch(e){}
+renderRecents();
+
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  document.getElementById('themeBtn').textContent=document.body.classList.contains('light')?'dark mode':'light mode';
+}
+function renderRecents(){
+  const w=document.getElementById('recents');w.innerHTML='';
+  recents.forEach(s=>{const d=document.createElement('div');d.className='rtag';d.textContent=s;d.onclick=()=>{document.getElementById('sym').value=s;go()};w.appendChild(d)});
+}
+function addRecent(s){recents=recents.filter(x=>x!==s);recents.unshift(s);if(recents.length>5)recents.pop();try{localStorage.setItem('sa_r',JSON.stringify(recents))}catch(e){}renderRecents()}
+function toggleFav(){const i=favs.indexOf(curSym);if(i>-1)favs.splice(i,1);else favs.push(curSym);try{localStorage.setItem('sa_f',JSON.stringify(favs))}catch(e){}updateFav()}
+function updateFav(){const b=document.getElementById('favBtn');const on=favs.includes(curSym);b.textContent=on?'★':'☆';b.classList.toggle('on',on)}
+function setPeriod(p,el){curPeriod=p;document.querySelectorAll('.pb').forEach(b=>b.classList.remove('on'));el.classList.add('on');if(curSym)buildChart(curSym,p)}
+function show(id){document.getElementById(id).style.display='block'}
+function hide(id){document.getElementById(id).style.display='none'}
+
+async function go(){
+  const sym=document.getElementById('sym').value.trim().toUpperCase();
+  if(!sym)return;
+  curSym=sym;
+  document.getElementById('errMsg').style.display='none';
+  hide('result');show('spinner');
+  document.getElementById('goBtn').disabled=true;
+  try{
+    const info=await getStockInfo(sym);
+    fillInfo(sym,info);
+    await buildChart(sym,curPeriod);
+    show('result');
+    addRecent(sym);updateFav();
+  }catch(err){
+    const e=document.getElementById('errMsg');
+    e.textContent=typeof err==='string'?err:(err.message||'Invalid symbol or data not available.');
+    e.style.display='block';
+  }
+  hide('spinner');document.getElementById('goBtn').disabled=false;
+}
+
+function seedRand(seed){let s=seed;return()=>{s=Math.sin(s)*10000;return s-(s|0)}}
+function getStockInfo(sym){
+  return new Promise((res,rej)=>{
+    setTimeout(()=>{
+      const d=stockDB[sym];
+      if(d){res(d)}
+      else if(sym.endsWith('.NS')){const r=seedRand(sym.charCodeAt(0)+sym.length);const price=Math.round(500+r()*4500);res({name:sym.replace('.NS','')+' Ltd',price,prev:Math.round(price*0.99),curr:'INR',exch:'NSE'})}
+      else{const r=seedRand(sym.charCodeAt(0)*31+sym.length);const price=Math.round(50+r()*450);if(sym.length<1||sym.length>6)rej('Invalid symbol or data not available.');else res({name:sym+' Corporation',price,prev:Math.round(price*0.985),curr:'USD',exch:'NYSE'})}
+    },800);
+  });
+}
+function fillInfo(sym,d){
+  const iINR=d.curr==='INR';
+  const fmt=v=>iINR?'₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:2}):'$'+Number(v).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('cname').textContent=d.name;
+  document.getElementById('csym').textContent=sym;
+  document.getElementById('cprice').textContent=fmt(d.price);
+  const chg=d.price-d.prev,pct=(chg/d.prev)*100;
+  const ce=document.getElementById('cchg');
+  ce.textContent=`${chg>=0?'+':''}${chg.toFixed(2)} (${pct>=0?'+':''}${pct.toFixed(2)}%)`;
+  ce.className='chg '+(chg>=0?'up':'dn');
+  document.getElementById('sPrev').textContent=fmt(d.prev);
+  document.getElementById('sCurr').textContent=d.curr;
+  document.getElementById('sExch').textContent=d.exch;
+}
+function buildChart(sym,period){
+  return new Promise(res=>{
+    setTimeout(()=>{
+      const pts={'3mo':90,'6mo':182,'1y':252,'2y':504}[period]||252;
+      const step=Math.max(1,Math.floor(pts/120));
+      const r=seedRand(sym.charCodeAt(0)*17+period.length+sym.length);
+      const endPrice=stockDB[sym]?stockDB[sym].price:(sym.endsWith('.NS')?2000:150);
+      let p=endPrice*(0.75+r()*0.3);
+      const allPrices=[];
+      for(let i=0;i<pts;i++){const drift=(endPrice-p)/(pts-i)*0.3;const vol=p*0.015*(r()-0.5)*2;p=Math.max(p*0.5,p+drift+vol);allPrices.push(p)}
+      const dates=[],prices=[],ma7=[],ma30=[];
+      const end=new Date();
+      for(let i=0;i<allPrices.length;i+=step){
+        const d=new Date(end);d.setDate(d.getDate()-(allPrices.length-1-i));
+        dates.push(d.toISOString().slice(0,10));
+        prices.push(parseFloat(allPrices[i].toFixed(2)));
+        const w7=allPrices.slice(Math.max(0,i-6),i+1);
+        ma7.push(w7.length>=7?parseFloat((w7.reduce((a,b)=>a+b,0)/w7.length).toFixed(2)):null);
+        const w30=allPrices.slice(Math.max(0,i-29),i+1);
+        ma30.push(w30.length>=30?parseFloat((w30.reduce((a,b)=>a+b,0)/w30.length).toFixed(2)):null);
+      }
+      drawChart({dates,prices,ma7,ma30},sym.endsWith('.NS'));res();
+    },600);
+  });
+}
+function drawChart(data,isINR){
+  if(chart)chart.destroy();
+  const ctx=document.getElementById('ch').getContext('2d');
+  const gc=ctx.createLinearGradient(0,0,0,280);
+  gc.addColorStop(0,'rgba(79,142,247,0.2)');gc.addColorStop(1,'rgba(79,142,247,0)');
+  chart=new Chart(ctx,{type:'line',data:{labels:data.dates,datasets:[
+    {label:'Close',data:data.prices,borderColor:'#4f8ef7',borderWidth:2,pointRadius:0,tension:0.35,fill:true,backgroundColor:gc},
+    {label:'7D MA',data:data.ma7,borderColor:'#f59e0b',borderWidth:1.5,pointRadius:0,tension:0.4,borderDash:[4,3],fill:false},
+    {label:'30D MA',data:data.ma30,borderColor:'#22c55e',borderWidth:1.5,pointRadius:0,tension:0.4,borderDash:[6,3],fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:'#5a6480',font:{size:11,family:'DM Mono'},boxWidth:24,usePointStyle:true,pointStyle:'line'}},
+    tooltip:{backgroundColor:'#1c2030',borderColor:'#252d42',borderWidth:1,titleColor:'#e2e8f4',bodyColor:'#5a6480',padding:10,
+    callbacks:{label:c=>`${c.dataset.label}: ${isINR?'₹':'$'}${Number(c.raw||0).toFixed(2)}`}}},
+    scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6480',maxTicksLimit:7,font:{size:10,family:'DM Mono'}},border:{display:false}},
+    y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5a6480',font:{size:10,family:'DM Mono'},callback:v=>(isINR?'₹':'$')+Number(v).toFixed(0)},border:{display:false}}}}});
+}
+
+/* CHATBOT */
+function toggleChat(){
+  chatOpen=!chatOpen;
+  document.getElementById('chatBox').classList.toggle('open',chatOpen);
+  document.getElementById('chatNotif').style.display='none';
+  if(chatOpen&&document.getElementById('chatMsgs').children.length===0){
+    addBotMsg("Hi! I'm your Stock Assistant.\n\nTell me a company name and I'll find the stock symbol for you!\n\n<span class='suggest-chip' onclick='fillChat(\"Infosys\")'>Infosys</span> <span class='suggest-chip' onclick='fillChat(\"Apple\")'>Apple</span> <span class='suggest-chip' onclick='fillChat(\"HDFC Bank\")'>HDFC Bank</span> <span class='suggest-chip' onclick='fillChat(\"Tesla\")'>Tesla</span> <span class='suggest-chip' onclick='fillChat(\"Reliance\")'>Reliance</span>");
+    setTimeout(()=>document.getElementById('chatIn').focus(),150);
+  }
+}
+function fillChat(t){document.getElementById('chatIn').value=t;sendChat()}
+function addBotMsg(html){
+  const msgs=document.getElementById('chatMsgs');
+  const d=document.createElement('div');d.className='msg bot';d.innerHTML=html.replace(/\n/g,'<br>');
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;
+}
+function addUserMsg(t){
+  const msgs=document.getElementById('chatMsgs');
+  const d=document.createElement('div');d.className='msg user';d.textContent=t;
+  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+function showTyping(){
+  const msgs=document.getElementById('chatMsgs');
+  const t=document.createElement('div');t.className='typing';t.id='typing';
+  t.innerHTML='<span></span><span></span><span></span>';
+  msgs.appendChild(t);msgs.scrollTop=msgs.scrollHeight;
+}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove()}
+
+async function sendChat(){
+  const inp=document.getElementById('chatIn');
+  const text=inp.value.trim();
+  if(!text)return;
+  inp.value='';
+  addUserMsg(text);
+  document.getElementById('chatSendBtn').disabled=true;
+  showTyping();
+  await new Promise(r=>setTimeout(r,750));
+  removeTyping();
+  processChat(text);
+  document.getElementById('chatSendBtn').disabled=false;
+  inp.focus();
+}
+function processChat(text){
+  const lower=text.toLowerCase().trim();
+  const upper=text.toUpperCase().trim();
+  if(stockDB[upper]){
+    const d=stockDB[upper];
+    addBotMsg(`Found it! <b>${d.name}</b> trades as <b>${upper}</b> on ${d.exch}.\n\n<span class='suggest-chip' onclick='loadFromChat("${upper}")'>Analyze ${upper} →</span>`);
+    return;
+  }
+  let found=null;
+  const keys=Object.keys(nameToSymbol).sort((a,b)=>b.length-a.length);
+  for(const key of keys){if(lower.includes(key)){found=nameToSymbol[key];break}}
+  if(found){
+    const d=stockDB[found];
+    addBotMsg(`Found <b>${d.name}</b>!\n\nSymbol: <b>${found}</b> · Exchange: ${d.exch}\n\n<span class='suggest-chip' onclick='loadFromChat("${found}")'>Analyze ${found} →</span>`);
+    return;
+  }
+  const words=lower.split(/\s+/);
+  let bestSym=null,bestScore=0;
+  for(const [key,sym] of Object.entries(nameToSymbol)){
+    const score=words.filter(w=>w.length>2&&key.includes(w)).length;
+    if(score>bestScore){bestScore=score;bestSym=sym}
+  }
+  if(bestSym&&bestScore>0){
+    const d=stockDB[bestSym];
+    addBotMsg(`Did you mean <b>${d.name}</b>? (${bestSym})\n\n<span class='suggest-chip' onclick='loadFromChat("${bestSym}")'>Yes, analyze →</span> <span class='suggest-chip' onclick='addBotMsg("Please type the full company name and I will try again.")'>Try again</span>`);
+    return;
+  }
+  addBotMsg(`I couldn't find "<b>${text}</b>" in my database.\n\nTry a more common name, or enter the stock symbol directly in the search bar.\n\n<span class='suggest-chip' onclick='fillChat("show popular Indian stocks")'>Indian stocks</span> <span class='suggest-chip' onclick='fillChat("show popular global stocks")'>Global stocks</span>`);
+}
+function loadFromChat(sym){
+  addBotMsg(`Loading <b>${sym}</b>...`);
+  setTimeout(()=>{document.getElementById('sym').value=sym;go();toggleChat()},400);
+}
+
+// Show notification dot after 3 seconds to invite users to try chatbot
+setTimeout(()=>{if(!chatOpen)document.getElementById('chatNotif').style.display='block'},3000);
+</script>
+</body>
+</html>
